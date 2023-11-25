@@ -30,6 +30,7 @@ async function run() {
 
     const apartmentCollection = client.db('assignment-twelve').collection('apartment');
     const usersCollection = client.db('assignment-twelve').collection('users');
+    const cartApartmentCollection = client.db('assignment-twelve').collection('cartApartment');
 
   // user collection here;
   
@@ -55,6 +56,18 @@ async function run() {
    app.get('/apartment-count', async(req, res) => {
         const result = await apartmentCollection.estimatedDocumentCount();
         res.send({result});
+   })
+
+   app.post('/apartment', async(req, res) => {
+       const apartmentData = req.body;
+       const query = {id: apartmentData.id};
+       const findData = await cartApartmentCollection.findOne(query);
+       if(findData){
+            return res.send({message: 'already added'})
+       }
+       const result = await cartApartmentCollection.insertOne(apartmentData);
+       res.send(result);
+
    })
 
 
