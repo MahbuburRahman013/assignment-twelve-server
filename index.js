@@ -28,7 +28,21 @@ async function run() {
     // Connect the client to the server	(optional starting in v4.7)
     await client.connect();
 
-    const apartmentCollection = client.db('assignment-twelve').collection('apartment')
+    const apartmentCollection = client.db('assignment-twelve').collection('apartment');
+    const usersCollection = client.db('assignment-twelve').collection('users');
+
+  // user collection here;
+  
+  app.post('/user', async(req, res) => {
+      const userInfo = req.body;
+      const query = {email: userInfo.email};
+      const existingUser = await usersCollection.findOne(query);
+      if(existingUser){
+         return res.send({message: 'user already existing'})
+      };
+      const result = await usersCollection.insertOne(userInfo);
+      res.send(result);
+  })
 
 
    app.get('/apartment', async(req, res) => {
