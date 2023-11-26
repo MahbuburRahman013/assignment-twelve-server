@@ -112,6 +112,13 @@ async function run() {
          res.send(result); 
    })
 
+   app.get('/member-data/:email', async(req, res) => {
+          const email = req.params.email;
+          const query = {userEmail: email};
+          const result = await agreementAcceptCollection.find(query).toArray();
+          res.send(result);
+   })
+
 
 
     // Send a ping to confirm a successful connection
