@@ -4,6 +4,7 @@ const cors = require('cors');
 const { MongoClient, ServerApiVersion, ObjectId } = require('mongodb');
 const app = express();
 const port = process.env.PORT || 5000;
+const stripe = require("stripe")(process.env.SPRITE_SECRET_KEY);
 
 app.use(express.json());
 app.use(cors());
@@ -27,11 +28,20 @@ async function run() {
   try {
     // Connect the client to the server	(optional starting in v4.7)
     await client.connect();
-
+// --------------------------
     const apartmentCollection = client.db('assignment-twelve').collection('apartment');
+
     const usersCollection = client.db('assignment-twelve').collection('users');
+
     const agreementAcceptCollection = client.db('assignment-twelve').collection('agreementAccept');
+
     const cartApartmentCollection = client.db('assignment-twelve').collection('cartApartment');
+
+    const couponsCollection = client.db('assignment-twelve').collection('coupons');
+
+    const paymentCollection = client.db('assignment-twelve').collection('payment');
+
+    // -----------------------
 
   // user collection here;
   
@@ -119,6 +129,54 @@ async function run() {
           res.send(result);
    })
 
+  //  coupon adding
+
+  app.post('/coupon-add', async(req, res) => {
+       const {couponData} = req.body;
+       const result = await couponsCollection.insertOne(couponData);
+       res.send(result);  
+  })
+
+  app.get('/all-coupons', async(req, res) => {
+        const result = await couponsCollection.find().toArray();
+        res.send(result)
+  })
+
+  //  stripe function 
+
+  app.post('/create-payment-intent', async( req, res) => {
+       let {price} = req.body;
+       if(price == 0){
+            price = 2
+         }
+       const amount = parseInt(price * 100);
+       const paymentIntent = await stripe.paymentIntents.create({
+        amount: amount,
+        currency: "usd",
+        payment_method_types: ['card'],
+  });
+
+     res.send({
+          clientSecret: paymentIntent.client_secret
+     })
+        
+
+  });
+
+
+  app.post('/payment', async(req, res) => {
+        const paymentInfo = req.body;
+        const result = await paymentCollection.insertOne(paymentInfo);
+        res.send(result)
+  });
+
+
+  app.get('/all-payment/:email', async(req, res) => {
+      const email = req.params.email;
+      const query = {email: email};
+      const result = await paymentCollection.find(query).toArray()    
+      res.send(result)
+  })
 
 
     // Send a ping to confirm a successful connection
