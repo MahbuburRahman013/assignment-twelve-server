@@ -1,6 +1,7 @@
 const express = require('express');
 require('dotenv').config()
 const cors = require('cors');
+const jwt = require('jsonwebtoken');
 const { MongoClient, ServerApiVersion, ObjectId } = require('mongodb');
 const app = express();
 const port = process.env.PORT || 5000;
@@ -45,8 +46,34 @@ async function run() {
 
     // -----------------------
 
+// jwt 
+
+  app.post('/jwt', async(req, res) => {
+        const user = req.body;
+        const token = jwt.sign(user, process.env.SECRET_TOKEN, {expiresIn: '3h'});
+        res.send({ token });
+  })
+
+  const verifyToken = (req, res, next) => {
+         if(!req.headers.authorization){
+             return res.status(401).send({message: 'forbidden access'}) 
+         }
+      const token = req.headers.authorization.split(' ')[1];
+      jwt.verify(token, process.env.SECRET_TOKEN , (err , decoded) => {
+           if(err){
+            return res.status(401).send({message: 'forbidden access'}) 
+           }
+           req.decoded = decoded;
+           next();
+      })
+      
+  }
+
+
+
   // user collection here;
-  
+  //  public api 
+
   app.post('/user', async(req, res) => {
       const userInfo = req.body;
       const query = {email: userInfo.email};
@@ -58,34 +85,35 @@ async function run() {
       res.send(result);
   })
 
-
+// public api
    app.get('/apartment', async(req, res) => {
         const page =  parseInt(req.query.page);
         const size =  parseInt(req.query.size);
         const result = await apartmentCollection.find().skip(page * size).limit(size).toArray();
         res.send(result);
    })
+// public api
 
    app.get('/apartment-count', async(req, res) => {
         const result = await apartmentCollection.estimatedDocumentCount();
         res.send({result});
    })
 
-   app.post('/apartment', async(req, res) => {
+   app.post('/apartment',verifyToken, async(req, res) => {
        const apartmentData = req.body;
        const result = await cartApartmentCollection.insertOne(apartmentData);
        res.send(result);
 
    })
 
-   app.get('/cart-apartment', async(req, res) => {
+   app.get('/cart-apartment', verifyToken, async(req, res) => {
 
          const result = await cartApartmentCollection.find().toArray();
          res.send(result)
 
    })
 
-   app.patch('/update-reject/:id', async(req, res) => {
+   app.patch('/update-reject/:id', verifyToken, async(req, res) => {
         const id = req.params.id;
         const query = {_id: new ObjectId(id)};
         const updateDoc = {
@@ -95,7 +123,7 @@ async function run() {
         res.send(result); 
    })
 
-   app.post('/update-confirm', async(req, res) => {
+   app.post('/update-confirm',verifyToken, async(req, res) => {
          const {roomData} = req.body;
          const statusQuery = {_id: new ObjectId(roomData._id)};
          const updateDocStatus = {
@@ -117,14 +145,14 @@ async function run() {
         res.send({resultStatus, resultRole, result})
    })
 
-   app.get('/user-role/:email', async(req, res) => {
+   app.get('/user-role/:email', verifyToken, async(req, res) => {
          const email = req.params.email;
          const query = {email: email};
          const result = await usersCollection.findOne(query);
          res.send(result); 
    })
 
-   app.get('/member-data/:email', async(req, res) => {
+   app.get('/member-data/:email',verifyToken, async(req, res) => {
           const email = req.params.email;
           const query = {userEmail: email};
           const result = await agreementAcceptCollection.find(query).toArray();
@@ -133,16 +161,18 @@ async function run() {
 
   //  coupon adding
 
-  app.post('/coupon-add', async(req, res) => {
+  app.post('/coupon-add', verifyToken, async(req, res) => {
        const {couponData} = req.body;
        const result = await couponsCollection.insertOne(couponData);
        res.send(result);  
   })
 
-  app.get('/all-coupons', async(req, res) => {
+  app.get('/all-coupons', verifyToken, async(req, res) => {
         const result = await couponsCollection.find().toArray();
         res.send(result)
   })
+
+  //public api
 
   app.get('/coupons-available', async(req, res) => {
        const query = {available: 'yes'};
@@ -150,7 +180,7 @@ async function run() {
        res.send(result);
   })
 
-  app.patch('/coupon/:id', async(req, res) => {
+  app.patch('/coupon/:id', verifyToken, async(req, res) => {
          const id = req.params.id;
          const query = {_id: new ObjectId(id)};
          const updateDoc = {
@@ -163,7 +193,7 @@ async function run() {
 
   //  stripe function 
 
-  app.post('/create-payment-intent', async( req, res) => {
+  app.post('/create-payment-intent', verifyToken, async( req, res) => {
        let {price} = req.body;
        if(price == 0){
             price = 2
@@ -183,14 +213,14 @@ async function run() {
   });
 
 
-  app.post('/payment', async(req, res) => {
+  app.post('/payment', verifyToken, async(req, res) => {
         const paymentInfo = req.body;
         const result = await paymentCollection.insertOne(paymentInfo);
         res.send(result)
   });
 
 
-  app.get('/all-payment/:email', async(req, res) => {
+  app.get('/all-payment/:email', verifyToken, async(req, res) => {
       const email = req.params.email;
       const query = {email: email};
       const result = await paymentCollection.find(query).toArray()    
@@ -198,13 +228,13 @@ async function run() {
   })
 
 
-  app.get('/all-member', async(req, res) => {
+  app.get('/all-member', verifyToken, async(req, res) => {
        const query = {role: 'member'};
        const result = await usersCollection.find(query).toArray();
        res.send(result)
   })
 
-  app.patch('/remove-member/:id', async(req, res) => {
+  app.patch('/remove-member/:id', verifyToken, async(req, res) => {
        const id = req.params.id;
        const query = {_id: new ObjectId(id) };
        const updateDoc = {
@@ -216,15 +246,28 @@ async function run() {
   })
 
 
-  app.post('/announcement', async(req, res) => {
+  app.post('/announcement', verifyToken, async(req, res) => {
          const announcement = req.body;
          const result = await announcementCollection.insertOne(announcement);
          res.send(result)
   })
 
-  app.get('/announcement', async(req, res) => {
+  app.get('/announcement', verifyToken, async(req, res) => {
          const result = await announcementCollection.find().toArray();
          res.send(result)
+  })
+
+
+  // admin profile data
+
+  app.get('/admin-profile-data', verifyToken, async(req, res) => {
+      
+          const allRooms = await apartmentCollection.estimatedDocumentCount();
+          const rentedRooms = await agreementAcceptCollection.estimatedDocumentCount();
+          const allUser = await usersCollection.find({role: 'user'}).toArray();
+          const allMember = await usersCollection.find({ role: 'member'}).toArray();
+
+          res.send({members:allMember.length,allRooms,users:allUser.length,rentedRooms});
   })
 
     // Send a ping to confirm a successful connection
