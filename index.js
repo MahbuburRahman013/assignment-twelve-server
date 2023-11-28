@@ -40,6 +40,8 @@ async function run() {
     const couponsCollection = client.db('assignment-twelve').collection('coupons');
 
     const paymentCollection = client.db('assignment-twelve').collection('payment');
+    
+    const announcementCollection = client.db('assignment-twelve').collection('announcement');
 
     // -----------------------
 
@@ -142,6 +144,23 @@ async function run() {
         res.send(result)
   })
 
+  app.get('/coupons-available', async(req, res) => {
+       const query = {available: 'yes'};
+       const result = await couponsCollection.find(query).toArray()
+       res.send(result);
+  })
+
+  app.patch('/coupon/:id', async(req, res) => {
+         const id = req.params.id;
+         const query = {_id: new ObjectId(id)};
+         const updateDoc = {
+             $set: { available: 'no' }
+         };
+
+         const result = await couponsCollection.updateOne(query,updateDoc);
+         res.send(result)
+  })
+
   //  stripe function 
 
   app.post('/create-payment-intent', async( req, res) => {
@@ -178,6 +197,35 @@ async function run() {
       res.send(result)
   })
 
+
+  app.get('/all-member', async(req, res) => {
+       const query = {role: 'member'};
+       const result = await usersCollection.find(query).toArray();
+       res.send(result)
+  })
+
+  app.patch('/remove-member/:id', async(req, res) => {
+       const id = req.params.id;
+       const query = {_id: new ObjectId(id) };
+       const updateDoc = {
+             $set: { role: 'user' }
+       }
+       
+       const result = await usersCollection.updateOne(query,updateDoc);
+       res.send(result)
+  })
+
+
+  app.post('/announcement', async(req, res) => {
+         const announcement = req.body;
+         const result = await announcementCollection.insertOne(announcement);
+         res.send(result)
+  })
+
+  app.get('/announcement', async(req, res) => {
+         const result = await announcementCollection.find().toArray();
+         res.send(result)
+  })
 
     // Send a ping to confirm a successful connection
     await client.db("admin").command({ ping: 1 });
