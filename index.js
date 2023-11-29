@@ -132,7 +132,7 @@ async function run() {
 
         const resultStatus = await cartApartmentCollection.updateOne(statusQuery,updateDocStatus);
 
-        const userQuery = {email: roomData.useEmail};
+        const userQuery = {email: roomData.userEmail};
         const updateRole = {
             $set: { role: 'member'}
         };
